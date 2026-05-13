@@ -19,8 +19,11 @@ var (
 const daemonChildEnv = "WSL_SNIP_DAEMON_CHILD"
 
 // Daemonize re-execs the current process as a detached background daemon.
-func Daemonize() error {
+func Daemonize(quiet bool) error {
 	if pid, err := runningPID(); err == nil {
+		if quiet {
+			return nil
+		}
 		return fmt.Errorf("daemon already running (PID %d)", pid)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -67,7 +70,9 @@ func Daemonize() error {
 		return err
 	}
 
-	fmt.Printf("wsl-obsidian-clip daemon started (PID %d)\n", pid)
+	if !quiet {
+		fmt.Printf("wsl-obsidian-clip daemon started (PID %d)\n", pid)
+	}
 	logF.Close()
 	return nil
 }

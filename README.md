@@ -62,6 +62,18 @@ wsl-obsidian-clip stop
 | `--verbose`  | `-v`  | `false` | Log PowerShell I/O                |
 | `--quiet`    | `-q`  | `false` | Suppress info messages            |
 
+### Start from `.bashrc`
+
+If you want the daemon to start automatically with interactive WSL shells, guard it so it only runs when a WSLg display is available:
+
+```bash
+if [[ $- == *i* && -n ${DISPLAY:-} ]]; then
+  wsl-obsidian-clip start --daemon --quiet
+fi
+```
+
+With `--quiet`, this command is idempotent: if the daemon is already running, it exits successfully without printing anything.
+
 ## How it works
 
 ```

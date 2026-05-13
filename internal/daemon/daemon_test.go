@@ -101,3 +101,43 @@ func TestStopTerminatesProcessAndRemovesPidFile(t *testing.T) {
 		t.Fatalf("expected pid file to be removed, stat err=%v", err)
 	}
 }
+
+func TestDaemonizeQuietTreatsAlreadyRunningAsSuccess(t *testing.T) {
+	t.Setenv(daemonChildEnv, "")
+	oldPidFile := PidFile
+	PidFile = filepath.Join(t.TempDir(), "wsl-obsidian-clip.pid")
+	t.Cleanup(func() { PidFile = oldPidFile })
+
+	cmd := exec.Command("sleep", "10")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start sleep: %v", err)
+	}
+
+	waitDone := make(chan error, 1)
+	go func() {
+		waitDone <- cmd.Wait()
+	}()
+
+	t.Cleanup(func() {
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		select {
+		case <-waitDone:
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
+
+	if err := os.WriteFile(PidFile, []byte(strconv.Itoa(cmd.Process.Pid)), 0644); err != nil {
+		t.Fatalf("write pid file: %v", err)
+	}
+
+	if err := Daemonize(true); err != nil {
+		t.Fatalf("Daemonize quiet should ignore running daemon: %v", err)
+	}
+
+	err := Daemonize(false)
+	if err == nil || !strings.Contains(err.Error(), "daemon already running") {
+		t.Fatalf("expected already running error, got %v", err)
+	}
+}
