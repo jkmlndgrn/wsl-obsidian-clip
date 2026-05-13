@@ -41,12 +41,12 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("interval must be between 100 and 5000 ms")
 	}
 
-	if err := platform.Check(); err != nil {
-		return fmt.Errorf("platform check failed: %w", err)
+	if flagDaemon {
+		return daemon.Daemonize(flagQuiet)
 	}
 
-	if flagDaemon {
-		return daemon.Daemonize()
+	if err := checkPlatform(flagQuiet); err != nil {
+		return fmt.Errorf("platform check failed: %w", err)
 	}
 
 	cleanup, err := daemon.MarkChildRunning()
@@ -84,3 +84,17 @@ func runStart(cmd *cobra.Command, args []string) error {
 
 	return poller.Run(cmd.Context(), logger, flagInterval, vault.AttachmentDir(), clientFactory, embedWriter)
 }
+
+func checkPlatform(quiet bool) error {
+	if !quiet {
+		return platformCheck()
+	}
+
+	oldOutput := log.Default().Writer()
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(oldOutput)
+
+	return platformCheck()
+}
+
+var platformCheck = platform.Check

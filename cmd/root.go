@@ -12,7 +12,7 @@ var rootCmd = &cobra.Command{
 	Long: `wsl-obsidian-clip is a daemon that polls the Windows clipboard for screenshot images,
 	offers an Obsidian embed (![[image.png]]) on the X11 clipboard, and saves the
 	file in your vault while respecting your Obsidian settings.`,
-	SilenceUsage:  false,
+	SilenceUsage:  true,
 	SilenceErrors: false,
 }
 
