@@ -33,8 +33,9 @@ make install
 Requires:
 
 - WSL2 with [interop](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#interop-settings) enabled
+- A WSLg graphical session with X11 clipboard access (`DISPLAY` must be set)
 - `powershell.exe` accessible on PATH
-- Go 1.22+ (build only)
+- Go 1.23+ (the module targets Go 1.23)
 
 ## Usage
 
