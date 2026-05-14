@@ -30,6 +30,8 @@ make build
 make install
 ```
 
+`make install` also creates `~/.config/wsl-obsidian-clip/config.toml` with commented examples if it does not already exist. The file is optional; the default installation uses automatic discovery.
+
 Requires:
 
 - WSL2 with [interop](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#interop-settings) enabled
@@ -91,7 +93,34 @@ With `--quiet`, this command is idempotent: if the daemon is already running, it
 
 ## Vault detection
 
-The tool auto-detects your active Obsidian vault by reading `~/.config/obsidian/obsidian.json` (prefers currently open vaults, then most recently used). It reads `.obsidian/app.json` to find the configured attachment folder path.
+The tool auto-detects your active Obsidian vault by reading Obsidian's `obsidian.json` (prefers currently open vaults, then most recently used). It checks the standard XDG config path plus common Flatpak and Snap paths, then reads `.obsidian/app.json` to find the configured attachment folder path.
+
+## Config overrides
+
+If automatic discovery does not work on your distro or install method, set only the values you need in `~/.config/wsl-obsidian-clip/config.toml`:
+
+```toml
+# wsl-obsidian-clip configuration
+#
+# All values are optional. Leave them commented out to use automatic discovery.
+
+# Override the Obsidian vault path when auto-detection picks the wrong vault
+# or cannot find your vault.
+# vault_path_override = "/home/you/Notes"
+
+# Override the attachment folder inside the vault.
+# This is relative to the selected vault path.
+# attachment_path_override = "Assets"
+
+# Override the Obsidian config file path when your distro/package stores it
+# somewhere the tool does not discover automatically.
+# obsidian_config_path_override = "/home/you/.config/obsidian/obsidian.json"
+
+# Override the PowerShell executable path when powershell.exe is not on PATH.
+# powershell_path_override = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+```
+
+Missing or commented values keep the default auto-discovery behavior.
 
 ## Acknowledgements
 
