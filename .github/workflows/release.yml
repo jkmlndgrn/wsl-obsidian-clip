@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+
+    env:
+      BINARY_NAME: wsl-obsidian-clip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build release packages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="main-${GITHUB_SHA::7}"
+          mkdir -p dist
+
+          for arch in amd64 arm64; do
+            package_name="${BINARY_NAME}_${version}_linux_${arch}"
+            package_dir="dist/${package_name}"
+
+            mkdir -p "${package_dir}"
+            GOOS=linux GOARCH="${arch}" CGO_ENABLED=0 go build \
+              -trimpath \
+              -ldflags="-s -w" \
+              -o "${package_dir}/${BINARY_NAME}" \
+              .
+
+            cp README.md LICENSE "${package_dir}/"
+            tar -C dist -czf "dist/${package_name}.tar.gz" "${package_name}"
+            rm -rf "${package_dir}"
+          done
+
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: |
+            dist/*.tar.gz
+            dist/checksums.txt
+          if-no-files-found: error
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          short_sha="${GITHUB_SHA::7}"
+          tag="main-${short_sha}"
+          title="Main ${short_sha}"
+
+          cat > release-notes.md <<EOF
+          Automated release for commit ${GITHUB_SHA} on main.
+
+          Packages:
+          - linux/amd64
+          - linux/arm64
+          EOF
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release edit "${tag}" \
+              --title "${title}" \
+              --notes-file release-notes.md \
+              --prerelease
+            gh release upload "${tag}" dist/*.tar.gz dist/checksums.txt --clobber
+          else
+            gh release create "${tag}" dist/*.tar.gz dist/checksums.txt \
+              --target "${GITHUB_SHA}" \
+              --title "${title}" \
+              --notes-file release-notes.md \
+              --prerelease
+          fi
