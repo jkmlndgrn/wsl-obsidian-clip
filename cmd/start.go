@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/jkmlndgrn/wsl-obsidian-clip/internal/clipboard"
+	"github.com/jkmlndgrn/wsl-obsidian-clip/internal/config"
 	"github.com/jkmlndgrn/wsl-obsidian-clip/internal/daemon"
 	"github.com/jkmlndgrn/wsl-obsidian-clip/internal/embed"
 	"github.com/jkmlndgrn/wsl-obsidian-clip/internal/obsidian"
@@ -41,12 +42,27 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("interval must be between 100 and 5000 ms")
 	}
 
-	if flagDaemon {
-		return daemon.Daemonize(flagQuiet)
+	loadedConfig, err := config.Load()
+	if err != nil {
+		return err
 	}
 
 	if err := checkPlatform(flagQuiet); err != nil {
 		return fmt.Errorf("platform check failed: %w", err)
+	}
+
+	powershellPath, err := platform.ResolvePowerShell(loadedConfig.Config.PowerShellPathOverride)
+	if err != nil {
+		return fmt.Errorf("powershell detection: %w", err)
+	}
+
+	vault, err := obsidian.DetectVault(loadedConfig.Config)
+	if err != nil {
+		return fmt.Errorf("vault detection: %w", err)
+	}
+
+	if flagDaemon {
+		return daemon.Daemonize(flagQuiet)
 	}
 
 	cleanup, err := daemon.MarkChildRunning()
@@ -62,10 +78,8 @@ func runStart(cmd *cobra.Command, args []string) error {
 		logger.SetOutput(io.Discard)
 	}
 
-	vault, err := obsidian.DetectVault()
-	if err != nil {
-		return fmt.Errorf("vault detection: %w", err)
-	}
+	logger.Printf("Using config: %s", loadedConfig.Path)
+	logger.Printf("Using PowerShell: %s", powershellPath)
 	logger.Printf("Using vault: %s", vault.Path)
 	logger.Printf("Attachment dir: %s", vault.AttachmentDir())
 
@@ -79,7 +93,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 	}
 
 	clientFactory := func() (poller.Clipboard, error) {
-		return clipboard.NewClient(logger, flagVerbose)
+		return clipboard.NewClient(logger, flagVerbose, powershellPath)
 	}
 
 	return poller.Run(cmd.Context(), logger, flagInterval, vault.AttachmentDir(), clientFactory, embedWriter)

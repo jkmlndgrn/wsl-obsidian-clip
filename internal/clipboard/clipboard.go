@@ -26,16 +26,16 @@ type Client struct {
 }
 
 // newPSCommand creates the exec.Cmd for the PowerShell subprocess.
-var newPSCommand = func() *exec.Cmd {
-	return exec.Command("powershell.exe",
+var newPSCommand = func(powershellPath string) *exec.Cmd {
+	return exec.Command(powershellPath,
 		"-STA", "-NoLogo", "-NoProfile", "-NonInteractive",
 		"-Command", psScript,
 	)
 }
 
 // NewClient spawns a persistent powershell.exe -STA process and waits for READY.
-func NewClient(logger *log.Logger, verbose bool) (*Client, error) {
-	cmd := newPSCommand()
+func NewClient(logger *log.Logger, verbose bool, powershellPath string) (*Client, error) {
+	cmd := newPSCommand(powershellPath)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("stdin pipe: %w", err)

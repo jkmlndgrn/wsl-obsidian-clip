@@ -15,9 +15,9 @@ func TestCheckPlatformQuietRestoresDefaultLogger(t *testing.T) {
 		log.SetOutput(originalOutput)
 	})
 
-	oldCanConnect := platformCheck
+	oldPlatformCheck := platformCheck
 	t.Cleanup(func() {
-		platformCheck = oldCanConnect
+		platformCheck = oldPlatformCheck
 	})
 
 	platformCheck = func() error {

@@ -2,10 +2,13 @@ package obsidian
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/jkmlndgrn/wsl-obsidian-clip/internal/config"
 )
 
 // Vault represents a detected Obsidian vault.
@@ -38,12 +41,15 @@ type appConfig struct {
 	AttachmentFolderPath string `json:"attachmentFolderPath"`
 }
 
-// DetectVault finds the most recently opened Obsidian vault and reads its config.
-func DetectVault() (*Vault, error) {
-	configPath := filepath.Join(os.Getenv("HOME"), ".config", "obsidian", "obsidian.json")
-	data, err := os.ReadFile(configPath)
+// DetectVault finds the selected Obsidian vault and reads its attachment config.
+func DetectVault(cfg config.Config) (*Vault, error) {
+	if cfg.VaultPathOverride != "" {
+		return vaultFromPath(cfg.VaultPathOverride, cfg.AttachmentPathOverride)
+	}
+
+	configPath, data, err := readObsidianConfig(cfg.ObsidianConfigPathOverride)
 	if err != nil {
-		return nil, fmt.Errorf("read obsidian config at %s: %w", configPath, err)
+		return nil, err
 	}
 
 	var config obsidianConfig
@@ -72,12 +78,26 @@ func DetectVault() (*Vault, error) {
 		return candidates[i].ts > candidates[j].ts
 	})
 
-	vaultPath := candidates[0].path
+	for _, candidate := range candidates {
+		vault, err := vaultFromPath(candidate.path, cfg.AttachmentPathOverride)
+		if err == nil {
+			return vault, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no usable vault paths found in obsidian config at %s", configPath)
+}
+
+func vaultFromPath(vaultPath string, attachmentOverride string) (*Vault, error) {
 	if _, err := os.Stat(vaultPath); err != nil {
 		return nil, fmt.Errorf("vault path does not exist: %s", vaultPath)
 	}
 
 	vault := &Vault{Path: vaultPath}
+	if attachmentOverride != "" {
+		vault.AttachmentPath = attachmentOverride
+		return vault, nil
+	}
 
 	// Read attachment folder path from .obsidian/app.json
 	appJsonPath := filepath.Join(vaultPath, ".obsidian", "app.json")
@@ -91,4 +111,39 @@ func DetectVault() (*Vault, error) {
 	// If app.json doesn't exist or has no attachment path, default to vault root
 
 	return vault, nil
+}
+
+func readObsidianConfig(overridePath string) (string, []byte, error) {
+	for _, path := range obsidianConfigPaths(overridePath) {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			return path, data, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", nil, fmt.Errorf("read obsidian config at %s: %w", path, err)
+		}
+	}
+
+	if overridePath != "" {
+		return "", nil, fmt.Errorf("read obsidian config at %s: %w", overridePath, os.ErrNotExist)
+	}
+	return "", nil, fmt.Errorf("obsidian config not found; checked: %v", obsidianConfigPaths(""))
+}
+
+func obsidianConfigPaths(overridePath string) []string {
+	if overridePath != "" {
+		return []string{overridePath}
+	}
+
+	home := os.Getenv("HOME")
+	paths := make([]string, 0, 4)
+	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
+		paths = append(paths, filepath.Join(xdgConfigHome, "obsidian", "obsidian.json"))
+	}
+	paths = append(paths,
+		filepath.Join(home, ".config", "obsidian", "obsidian.json"),
+		filepath.Join(home, ".var", "app", "md.obsidian.Obsidian", "config", "obsidian", "obsidian.json"),
+		filepath.Join(home, "snap", "obsidian", "current", ".config", "obsidian", "obsidian.json"),
+	)
+	return paths
 }
