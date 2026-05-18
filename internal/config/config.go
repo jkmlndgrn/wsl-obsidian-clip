@@ -25,7 +25,7 @@ const Template = `# wsl-obsidian-clip configuration
 # somewhere the tool does not discover automatically.
 # obsidian_config_path_override = "/home/you/.config/obsidian/obsidian.json"
 
-# Override the PowerShell executable path when powershell.exe is not on PATH.
+# Override the PowerShell executable path when automatic discovery fails.
 # powershell_path_override = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
 `
 

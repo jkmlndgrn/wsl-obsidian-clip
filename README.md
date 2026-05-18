@@ -30,13 +30,13 @@ make build
 make install
 ```
 
-`make install` also creates `~/.config/wsl-obsidian-clip/config.toml` with commented examples if it does not already exist. The file is optional; the default installation uses automatic discovery.
+`make install` also creates `~/.config/wsl-obsidian-clip/config.toml` with commented examples if it does not already exist. If `~/.local/bin` is not already on PATH, the installer discovers your shell profile and adds an idempotent PATH snippet for future shells. The config file is optional; the default installation uses automatic discovery.
 
 Requires:
 
 - WSL2 with [interop](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#interop-settings) enabled
 - A WSLg graphical session with X11 clipboard access (`DISPLAY` must be set)
-- `powershell.exe` accessible on PATH
+- Windows PowerShell available through WSL interop; the tool discovers it from PATH or the standard Windows location
 - Go 1.23+ (the module targets Go 1.23)
 
 ## Usage
@@ -116,7 +116,7 @@ If automatic discovery does not work on your distro or install method, set only 
 # somewhere the tool does not discover automatically.
 # obsidian_config_path_override = "/home/you/.config/obsidian/obsidian.json"
 
-# Override the PowerShell executable path when powershell.exe is not on PATH.
+# Override the PowerShell executable path when automatic discovery fails.
 # powershell_path_override = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
 ```
 

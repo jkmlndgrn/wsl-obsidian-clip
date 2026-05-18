@@ -1,6 +1,7 @@
 .PHONY: build clean install
 
 BINARY := wsl-obsidian-clip
+INSTALL_DIR ?= $(HOME)/.local/bin
 CONFIG_DIR := $(HOME)/.config/$(BINARY)
 CONFIG_FILE := $(CONFIG_DIR)/config.toml
 
@@ -8,10 +9,10 @@ build:
 	go build -o $(BINARY) .
 
 install: build
-	mkdir -p $(HOME)/.local/bin
-	cp $(BINARY) $(HOME)/.local/bin/$(BINARY)
-	mkdir -p $(CONFIG_DIR)
-	@if [ ! -f $(CONFIG_FILE) ]; then \
+	mkdir -p "$(INSTALL_DIR)"
+	cp "$(BINARY)" "$(INSTALL_DIR)/$(BINARY)"
+	mkdir -p "$(CONFIG_DIR)"
+	@if [ ! -f "$(CONFIG_FILE)" ]; then \
 		printf '%s\n' \
 		'# wsl-obsidian-clip configuration' \
 		'#' \
@@ -29,10 +30,11 @@ install: build
 		'# somewhere the tool does not discover automatically.' \
 		'# obsidian_config_path_override = "/home/you/.config/obsidian/obsidian.json"' \
 		'' \
-		'# Override the PowerShell executable path when powershell.exe is not on PATH.' \
+		'# Override the PowerShell executable path when automatic discovery fails.' \
 		'# powershell_path_override = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"' \
-		> $(CONFIG_FILE); \
+		> "$(CONFIG_FILE)"; \
 	fi
+	@sh scripts/ensure-path.sh "$(INSTALL_DIR)" "$(BINARY)"
 
 clean:
 	rm -f $(BINARY)
